@@ -1,0 +1,16 @@
+{
+  "source": "Unity",
+  "applications": [
+    {
+      "app_key": "application.generated.unity.cybersickness.exe",
+      "launch_type": "url",
+      "url": "steam://launch/",
+      "action_manifest_path": "J:\\Files\\Unity Projects\\cybersickness-study-2\\Cybersickness\\Assets\\StreamingAssets\\SteamVR\\actions.json",
+      "strings": {
+        "en_us": {
+          "name": "Cybersickness [Testing]"
+        }
+      }
+    }
+  ]
+}
