@@ -1,6 +1,9 @@
 ﻿using UnityEngine;
 using UnityEngine.InputSystem;
 
+/// <summary>
+/// The final 
+/// </summary>
 public class ExitScene : MonoBehaviour
 {
     [SerializeField] private float textDistanceFromHead = 2.0f;
@@ -11,12 +14,15 @@ public class ExitScene : MonoBehaviour
     private void Start()
     {
         Transform centeredPlayer = GameObject.Find("Player (Centered)")?.transform;
-        centeredPlayer.position = Vector3.zero;
-        centeredPlayer.rotation = Quaternion.identity;
+        if (centeredPlayer)
+        {
+            centeredPlayer.position = Vector3.zero;
+            centeredPlayer.rotation = Quaternion.identity;
 
-        Vector3 position = centeredPlayer.position + centeredPlayer.forward * textDistanceFromHead;
-        position.y += textHeight;
-        exitText.transform.position = position;
+            Vector3 position = centeredPlayer.position + centeredPlayer.forward * textDistanceFromHead;
+            position.y += textHeight;
+            exitText.transform.position = position;
+        }
     }
 
     private void Update()

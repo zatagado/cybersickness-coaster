@@ -3,11 +3,17 @@ using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
 using UnityEngine.InputSystem;
 
-public class DemoController : MonoBehaviour
+/// <summary>
+/// State machine component for managing the experiment.
+/// </summary>
+public class DemoController : MonoBehaviour // TODO rename this
 {
-    [SerializeField] private DemoState _currDemoState;
+    /// <summary>
+    /// Enum representing the current state of the application.
+    /// </summary>
+    [SerializeField] private DemoState currentDemoState;
 
-    [SerializeField] private RollerCoasterTest rollerCoasterTest;
+    [SerializeField] private RollerCoasterTest rollerCoasterTest; // TODO probably remove this
     [SerializeField] private Survey survey;
     [SerializeField] private BalanceMeasure balanceTest;
 
@@ -23,11 +29,14 @@ public class DemoController : MonoBehaviour
     [SerializeField] private string startSceneName;
     private bool loadingScene;
 
-    public DemoState CurrDemoState { get => _currDemoState; set => _currDemoState = value; }
+    /// <summary>
+    /// Getter/setter property for the current state of the application.
+    /// </summary>
+    public DemoState CurrentDemoState { get => currentDemoState; set => currentDemoState = value; }
 
     private async void Start()
     {
-        _currDemoState = DemoState.start;
+        currentDemoState = DemoState.start;
 
         Debug.Log("Loading demo.");
         CybersickData.LoadData();
@@ -57,7 +66,7 @@ public class DemoController : MonoBehaviour
 
         await Task.Delay(1);
 
-        _currDemoState = DemoState.survey;
+        currentDemoState = DemoState.survey;
         Debug.Log("Finished loading.");
         loadingScene = false;
     }
@@ -66,27 +75,28 @@ public class DemoController : MonoBehaviour
     {
         if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
-            _currDemoState = DemoState.survey;
+            currentDemoState = DemoState.survey;
             currLevel = levels; //ensure it will quit after sending the data
             Debug.Log("Running time was " + rollerCoasterTest.GetRunTime());
         }
 
+        // Quit the application when the escape key is pressed.
         if (Keyboard.current.escapeKey.wasPressedThisFrame)
         {
             Application.Quit();
         }
-        switch (_currDemoState)
+        switch (currentDemoState)
         {
             case DemoState.start:
                 break;
             case DemoState.rollerCoasterTest:
-                _currDemoState = rollerCoasterTest.Tick();         
+                currentDemoState = rollerCoasterTest.Tick();         
                 break;
             case DemoState.balanceTest:
-                _currDemoState = balanceTest.Tick();
+                currentDemoState = balanceTest.Tick();
                 break;
             case DemoState.survey:
-                _currDemoState = survey.Tick();
+                currentDemoState = survey.Tick();
                 break;
             case DemoState.send:
                 SendData.SendLevel(this, surveyURL, currLevel, rollerCoasterTest.GetTargetsDestroyedRatio(), rollerCoasterTest.GetRunTime(),
@@ -94,11 +104,11 @@ public class DemoController : MonoBehaviour
                 if (currLevel < levels)
                 {
                     currLevel++;
-                    _currDemoState = DemoState.rollerCoasterTest;
+                    currentDemoState = DemoState.rollerCoasterTest;
                 }
                 else
                 {
-                    _currDemoState = DemoState.end;
+                    currentDemoState = DemoState.end;
                 }
                 break;
             case DemoState.end:

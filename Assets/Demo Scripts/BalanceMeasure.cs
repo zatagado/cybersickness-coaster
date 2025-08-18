@@ -1,10 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using UnityEngine;
 
-public class BalanceMeasure : MonoBehaviour
+/// <summary>
+/// State machine component for measuring user balance after a roller coaster test. 
+/// </summary>
+public class BalanceMeasure : MonoBehaviour // TODO rename to MeasureBalance
 {
+    /// <summary>
+    /// Enum representing internal state.
+    /// </summary>
     private enum BalanceMeasureState
     {
         setup,
@@ -14,43 +19,80 @@ public class BalanceMeasure : MonoBehaviour
         finalIgnoring,
         end
     }
-    [SerializeField] private BalanceMeasureState currState;
+    
+    /// <summary>
+    /// The current internal state.
+    /// </summary>
+    [SerializeField] private BalanceMeasureState currentState;
 
     private float waitingTime;
+    /// <summary>
+    /// How long to inform the user that their balance is going to be recorded.
+    /// </summary>
     [SerializeField] private float waitPeriod;
+    
     private float testingTime;
-    [SerializeField] private float iIgnoreDataPeriod;
+    /// <summary>
+    /// How long to ignore balance data before starting to record.
+    /// </summary>
+    [SerializeField] private float initialIgnoreDataPeriod;
+    
+    /// <summary>
+    /// How long to record balance data.
+    /// </summary>
     [SerializeField] private float testPeriod;
-    [SerializeField] private float fIgnoreDataPeriod;
+    
+    /// <summary>
+    /// How long to ignore balance data after finishing recording.
+    /// </summary>
+    [SerializeField] private float finalIgnoreDataPeriod;
 
+    /// <summary>
+    /// The frequency of which to record data. TODO convert this to fixed interval
+    /// </summary>
     [SerializeField] private int captureFrame;
-    private int currFrame;
-
+    private int currentFrame;
+    
     private List<Vector3> positions;
 
     private Transform centeredPlayer;
     private Transform vrCamera;
+    /// <summary>
+    /// Text output gameobject. Requires a
+    /// </summary>
     [SerializeField] private GameObject text;
+    /// <summary>
+    /// The timer 
+    /// </summary>
     [SerializeField] private TMPro.TextMeshProUGUI timer;
 
+    /// <summary>
+    /// The distance from the user's head you would like the measuring balance text to be displayed.
+    /// </summary>
     [SerializeField] private float textDistanceFromHead = 2.0f;
+    /// <summary>
+    /// The height of the measuring balance text off of the ground.
+    /// </summary>
     [SerializeField] private float textHeight = 1.5f;
 
+    /// <summary>
+    /// The position you would like to move the user to to begin measuring.
+    /// </summary>
     [SerializeField] private Transform measurementPosition;
 
     public Action<bool> SetUpAction;
 
-    [SerializeField] private bool isCurrentlyRunning;
-
+    /// <summary>
+    /// Initial setup of the component.
+    /// </summary>
     private void Start()
     {
         positions = new List<Vector3>();
 
-        currFrame = 0;
+        currentFrame = 0;
 
         text.SetActive(false);
-        isCurrentlyRunning = false;
-        currState = BalanceMeasureState.setup;
+        currentState = BalanceMeasureState.setup;
     }
 
     public void SetPlayerObjects(Transform centeredPlayer, Transform vrCamera)
@@ -61,22 +103,22 @@ public class BalanceMeasure : MonoBehaviour
 
     public DemoState Tick()
     {
-        switch (currState)
+        switch (currentState)
         {
             case BalanceMeasureState.setup:
-                currState = SetUp();
+                currentState = SetUp();
                 break;
             case BalanceMeasureState.waiting:
-                currState = Waiting();
+                currentState = Waiting();
                 break;
             case BalanceMeasureState.initialIgnoring:
-                currState = InitialIgnore();
+                currentState = InitialIgnore();
                 break;
             case BalanceMeasureState.testing:
-                currState = Test();
+                currentState = Test();
                 break;
             case BalanceMeasureState.finalIgnoring:
-                currState = FinalIgnore();
+                currentState = FinalIgnore();
                 break;
             case BalanceMeasureState.end:
                 End();
@@ -93,7 +135,6 @@ public class BalanceMeasure : MonoBehaviour
 
     private BalanceMeasureState SetUp()
     {
-        isCurrentlyRunning = true;
         SetUpAction?.Invoke(false);
         text.SetActive(true);
         positions.Clear();
@@ -103,11 +144,11 @@ public class BalanceMeasure : MonoBehaviour
         text.transform.position = position;
 
         waitingTime = waitPeriod;
-        testingTime = iIgnoreDataPeriod + testPeriod + fIgnoreDataPeriod;
+        testingTime = initialIgnoreDataPeriod + testPeriod + finalIgnoreDataPeriod;
 
         timer.text = string.Format("Stand up! Measuring balance in: {0:00}", waitingTime);
 
-        currFrame = 0;
+        currentFrame = 0;
         return BalanceMeasureState.waiting;
     }
 
@@ -128,7 +169,7 @@ public class BalanceMeasure : MonoBehaviour
 
     private BalanceMeasureState InitialIgnore()
     {
-        if (testingTime <= testPeriod + fIgnoreDataPeriod)
+        if (testingTime <= testPeriod + finalIgnoreDataPeriod)
         {
             Debug.Log("Measuring balance values.");
             return BalanceMeasureState.testing;
@@ -143,9 +184,9 @@ public class BalanceMeasure : MonoBehaviour
 
     private BalanceMeasureState Test()
     {
-        if (testingTime <= fIgnoreDataPeriod)
+        if (testingTime <= finalIgnoreDataPeriod)
         {
-            currFrame = 0;
+            currentFrame = 0;
             Debug.Log("Finished measuring balance values.");
             return BalanceMeasureState.finalIgnoring;
         }
@@ -154,11 +195,11 @@ public class BalanceMeasure : MonoBehaviour
             testingTime -= Time.deltaTime;
             timer.text = string.Format("Stand still! Measuring balance: {0:00}", testingTime);
 
-            if (currFrame % captureFrame == 0)
+            if (currentFrame % captureFrame == 0)
             {
                 positions.Add(vrCamera.position);
             }
-            currFrame++;
+            currentFrame++;
             return BalanceMeasureState.testing;
         }
     }
@@ -181,9 +222,8 @@ public class BalanceMeasure : MonoBehaviour
 
     private void End()
     {
-        isCurrentlyRunning = false;
         text.SetActive(false);
-        currState = BalanceMeasureState.setup;
+        currentState = BalanceMeasureState.setup;
     }
 
     //average distance traveled

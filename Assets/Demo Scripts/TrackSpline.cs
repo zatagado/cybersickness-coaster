@@ -13,12 +13,22 @@ public class TrackSpline : MonoBehaviour
 
     [HideInInspector] public int selectedIndex = 0;
 
+    // TODO change all of these to properties
+    public Vector3 SelectedPosition { get; set; }
     [HideInInspector] public Vector3 selectedPosition;
+    /// <summary>
+    /// Rotation around a rail track, facing towards the front of the track, in degrees.
+    /// </summary>
+    public float SelectedRailRotation { get; set; }
     [HideInInspector] public float selectedRailRotation;
+    public bool SelectedPowerNext { get; set; }
     [HideInInspector] public bool selectedPowerNext;
+    public bool SelectedPowerPrevious { get; set; }
     [HideInInspector] public bool selectedPowerPrevious;
+    public bool SelectedSpeed { get; set; }
     [HideInInspector] public float selectedSpeed;
 
+    public float Gravity { get; set; } = 10;
     [HideInInspector] public float gravity = 10;
     [HideInInspector] public bool continuousLoop;
     [HideInInspector] public int loops;
@@ -75,9 +85,9 @@ public class TrackSpline : MonoBehaviour
     public void AddCurve()
     {
         Array.Resize(ref points, points.Length + 3);
-        Vector3 prevLastPos = points[points.Length - 4].LocalPosition;
-        Vector3 prev2ToLastPos = points[points.Length - 5].LocalPosition;
-        Vector3 direction = (prevLastPos - prev2ToLastPos).normalized;
+        Vector3 previousLastPosition = points[^4].LocalPosition; // TODO rename this
+        Vector3 previous2ToLastPosition = points[^5].LocalPosition; // TODO rename this
+        Vector3 direction = (previousLastPosition - previous2ToLastPosition).normalized;
         Quaternion rotation = Quaternion.LookRotation(direction, Vector3.up);
 
         Transform transformA = new GameObject("Point " + (points.Length - 3)).transform;
@@ -89,22 +99,22 @@ public class TrackSpline : MonoBehaviour
         Transform transformC = new GameObject("Point " + (points.Length - 1)).transform;
         transformC.SetParent(transform);
 
-        bool powerPrevious = points[points.Length - 4].PowerPrevious;
-        SplinePoint endPoint = points[points.Length - 4];
+        bool powerPrevious = points[^4].PowerPrevious;
+        SplinePoint endPoint = points[^4];
         endPoint.PowerNext = powerPrevious;
-        points[points.Length - 3] = new SplinePoint(transformA, prevLastPos + (direction), powerPrevious);
-        points[points.Length - 2] = new SplinePoint(transformB, prevLastPos + (direction * 2), powerPrevious);
-        points[points.Length - 1] = new SplinePoint(transformC, prevLastPos + (direction * 3), rotation, powerPrevious, endPoint.Speed);
+        points[^3] = new SplinePoint(transformA, previousLastPosition + (direction), powerPrevious);
+        points[^2] = new SplinePoint(transformB, previousLastPosition + (direction * 2), powerPrevious);
+        points[^1] = new SplinePoint(transformC, previousLastPosition + (direction * 3), rotation, powerPrevious, endPoint.Speed);
     }
 
     /// <summary>
     /// Adds a curve of three points after a certain point in the spline.
     /// </summary>
-    /// <param name="startIndex"></param>
+    /// <param name="startIndex">The index along the track</param>
     public void AddCurve(int startIndex)
     {
         Array.Resize(ref points, points.Length + 3);
-        Vector3 midDir = GetDirection(startIndex, 0.5f);
+        Vector3 midDirection = GetDirection(startIndex, 0.5f);
         Quaternion rotation = GetRotation(startIndex, 0.5f);
 
         Vector3 midPoint = transform.InverseTransformPoint(GetPosition(startIndex, 0.5f));
@@ -126,37 +136,39 @@ public class TrackSpline : MonoBehaviour
         transformC.SetParent(transform);
 
         bool powerSpline = points[startIndex].PowerNext;
-        points[startIndex + 2] = new SplinePoint(transformA, midPoint + (midDir * distanceBetween * -0.2f), powerSpline);
+        points[startIndex + 2] = new SplinePoint(transformA, midPoint + (midDirection * distanceBetween * -0.2f), powerSpline);
         points[startIndex + 3] = new SplinePoint(transformC, midPoint, rotation, powerSpline, 
             Mathf.Lerp(points[startIndex].Speed, points[startIndex + 3].Speed, 0.5f));
         points[startIndex + 3].PowerNext = powerSpline;
-        points[startIndex + 4] = new SplinePoint(transformB, midPoint + (midDir * distanceBetween * 0.2f), powerSpline);
+        points[startIndex + 4] = new SplinePoint(transformB, midPoint + (midDirection * distanceBetween * 0.2f), powerSpline);
     }
 
     /// <summary>
-    /// Removes a three point curve.
+    /// Removes the three-point curve at the end of the spline.
     /// </summary>
     public void RemoveCurve()
     {
-        DestroyImmediate(points[points.Length - 3].GameObject);
-        DestroyImmediate(points[points.Length - 2].GameObject);
-        DestroyImmediate(points[points.Length - 1].GameObject);
+        DestroyImmediate(points[^3].GameObject);
+        DestroyImmediate(points[^2].GameObject);
+        DestroyImmediate(points[^1].GameObject);
         Array.Resize(ref points, points.Length - 3);
     }
 
     /// <summary>
-    /// Removes a three point curve a certain point given a start index value.
+    /// Removes a three-point Bézier curve a certain point given a start index value. Used for removing curves in the
+    /// middle of a spline.
     /// </summary>
-    /// <param name="startIndex"></param>
+    /// <param name="startIndex">The start index along a spline of the Bézier curve you are trying to remove.</param>
     public void RemoveCurve(int startIndex)
     {
+        // TODO check if destroyimmediate is actually needed, but it is probably fine since this is used in the editor
         DestroyImmediate(points[startIndex + 1].GameObject);
         DestroyImmediate(points[startIndex].GameObject);
         DestroyImmediate(points[startIndex - 1].GameObject);
 
         for (int i = startIndex + 2; i < points.Length; i++)
         {
-            points[i].GameObject.name = "Point " + (i - 3);
+            points[i].GameObject.name = $"Point {i - 3}";
             points[i - 3] = points[i];
         }
         Array.Resize(ref points, points.Length - 3);
@@ -177,7 +189,7 @@ public class TrackSpline : MonoBehaviour
 
         if (index == 0 && continuousLoop)
         {
-            selectedPowerPrevious = points[points.Length - 1].PowerPrevious;
+            selectedPowerPrevious = points[^1].PowerPrevious;
         }
         else
         {
@@ -198,20 +210,9 @@ public class TrackSpline : MonoBehaviour
 
         if (index % 3 == 0)
         {
-            //point.Rotation = Quaternion.Euler(selectedRotation);
-            /*
-            Vector3 fwd = selectedIndex == points.Length - 1 ? (points[selectedIndex].Position - points[selectedIndex - 1].Position).normalized : 
-                (points[selectedIndex + 1].Position - points[selectedIndex].Position).normalized;
-            point.Rotation = Quaternion.AngleAxis(selectedRailRotation, fwd);
-            */
-
-            //point.LocalRotation.eulerAngles.z = selectedRailRotation;
-
             Vector3 localEuler = point.LocalRotation.eulerAngles;
             localEuler.z = selectedRailRotation;
             point.LocalRotation = Quaternion.Euler(localEuler);
-
-            //point.Transform.localRotation.eulerAngles.z = selectedRailRotation;
 
             if (point.PowerNext != selectedPowerNext)
             {

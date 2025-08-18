@@ -2,8 +2,12 @@
 using UnityEngine;
 using UnityEngine.Networking;
 
+/// <summary>
+/// Component for sending survey and balance data per roller coaster level to the Qualtrics survey API.
+/// </summary>
 public class SendData
 {
+    // TODO either find a non monobehaviour way to do this or make this a monobehaviour
     public static void SendStart(MonoBehaviour monoBehaviour, string surveyURL)
     {
         // create function
@@ -36,7 +40,7 @@ public class SendData
         WWWForm form = new WWWForm();
         form.AddField("pid", CybersickData.PID);
         form.AddField("session", CybersickData.Session);
-        form.AddField("level", level); // use numbers or words for the input?
+        form.AddField("level", level);
         form.AddField("balloons popped ratio", balloonsPoppedRatio.ToString());
         form.AddField("moment of inertia", moi.ToString());
         form.AddField("general discomfort", ResultToString(surveyData[0]));
@@ -55,7 +59,6 @@ public class SendData
         {
             yield return request.SendWebRequest();
         }
-        Debug.Log("Sent");
     }
 
     private static string ResultToString(int i)

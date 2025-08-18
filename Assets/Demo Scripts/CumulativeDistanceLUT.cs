@@ -1,71 +1,80 @@
 ﻿using UnityEngine;
 
+/// <summary>
+/// Look up table data structure for finding the "t" value along a Bézier curve given a target distance. There is no
+/// formula to get the length of a Bézier curve given a value "t".
+/// </summary>
 [System.Serializable]
 public class CumulativeDistanceLUT
 {
     private const float IntervalT = 0.01f;
-    private const float IntervalTargetDist = 0.01f;
+    private const float IntervalTargetDistance = 0.01f;
     [SerializeField] private float intervalDistance = 0.0f;
 
-    public float[] LUT;
+    public float[] lut;
 
-    public float CurveLength => (LUT.Length - 1) * intervalDistance;
+    public float CurveLength => (lut.Length - 1) * intervalDistance;
 
+    /// <summary>
+    /// Constructor for the 
+    /// </summary>
+    /// <param name="spline"></param>
+    /// <param name="startIndex"></param>
     public CumulativeDistanceLUT(TrackSpline spline, int startIndex)
     {
         int arrayLength = Mathf.CeilToInt(1.0f / IntervalT);
 
-        LUT = new float[arrayLength + 1];
+        lut = new float[arrayLength + 1];
 
-        Vector3 prevPosition = spline.GetPosition(startIndex, 0.0f);
+        Vector3 previousPosition = spline.GetPosition(startIndex, 0.0f);
 
-        LUT[0] = 0.0f;
+        lut[0] = 0.0f;
 
         for (int i = 1; i < arrayLength; i++)
         {
             float t = IntervalT * i;
             Vector3 currPosition = spline.GetPosition(startIndex, t);
-            float distance = Vector3.Distance(prevPosition, currPosition);
-            LUT[i] = LUT[i - 1] + distance;
-            prevPosition = currPosition;
+            float distance = Vector3.Distance(previousPosition, currPosition);
+            lut[i] = lut[i - 1] + distance;
+            previousPosition = currPosition;
         }
 
-        LUT[arrayLength] = LUT[arrayLength - 1] + Vector3.Distance(prevPosition, spline.GetPosition(startIndex, 1.0f)); // last point must be t = 1.0f
+        lut[arrayLength] = lut[arrayLength - 1] + Vector3.Distance(previousPosition, spline.GetPosition(startIndex, 1.0f)); // last point must be t = 1.0f
 
-        LUT = UseDistanceIntervals(LUT);
+        lut = UseDistanceIntervals(lut);
     }
 
     // credit freya holmer for most of this method
-    private float[] UseDistanceIntervals(float[] LUT)
+    private float[] UseDistanceIntervals(float[] lut)
     {
-        float arcLength = LUT[LUT.Length - 1];
+        float arcLength = lut[^1];
 
-        int divisions = Mathf.CeilToInt(arcLength / IntervalTargetDist);
+        int divisions = Mathf.CeilToInt(arcLength / IntervalTargetDistance);
         intervalDistance = arcLength / divisions;
 
-        float[] tByDistanceLUT = new float[divisions + 1];
+        float[] tByDistanceLut = new float[divisions + 1];
 
-        tByDistanceLUT[0] = 0.0f;
+        tByDistanceLut[0] = 0.0f;
 
         int j = 1;
         for (int i = 1; i < divisions; i++)
         {
             float distance = intervalDistance * i; // distance trying to find a t for
 
-            for (; distance > LUT[j]; j++) ; // keep incrementing j until it distance is less than or equal to the value in the Look up table
+            for (; distance > lut[j]; j++); // keep incrementing j until it distance is less than or equal to the value in the Look up table
 
-            float lerpBetweenTs = Mathf.InverseLerp(LUT[j - 1], LUT[j], distance);
-            tByDistanceLUT[i] = Mathf.Lerp((j - 1) * IntervalT, j * IntervalT, lerpBetweenTs);
+            float lerpBetweenTs = Mathf.InverseLerp(lut[j - 1], lut[j], distance);
+            tByDistanceLut[i] = Mathf.Lerp((j - 1) * IntervalT, j * IntervalT, lerpBetweenTs);
         }
 
-        tByDistanceLUT[tByDistanceLUT.Length - 1] = 1.0f;
+        tByDistanceLut[^1] = 1.0f;
 
-        return tByDistanceLUT;
+        return tByDistanceLut;
     }
 
     public float GetTFromDistance(float distance)
     {
-        float arcLength = (LUT.Length - 1) * intervalDistance;
+        float arcLength = (lut.Length - 1) * intervalDistance;
 
         if (distance >= arcLength)
         {
@@ -73,13 +82,13 @@ public class CumulativeDistanceLUT
         }
         else
         {
-            // find the lower and upper index that the distance fits into the LUT
+            // find the lower and upper index that the distance fits into the lut
             int lowerIndex = (int)(distance / intervalDistance);
             int upperIndex = lowerIndex + 1;
 
-            float lerpBetweenDists = Mathf.InverseLerp(intervalDistance * lowerIndex, intervalDistance * upperIndex, distance); // t value between two distances
+            float lerpBetweenDistances = Mathf.InverseLerp(intervalDistance * lowerIndex, intervalDistance * upperIndex, distance); // t value between two distances
 
-            return Mathf.Lerp(LUT[lowerIndex], LUT[upperIndex], lerpBetweenDists);
+            return Mathf.Lerp(lut[lowerIndex], lut[upperIndex], lerpBetweenDistances);
         }
     }
 }

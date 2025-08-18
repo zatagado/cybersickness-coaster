@@ -1,5 +1,8 @@
 ﻿using UnityEngine;
 
+/// <summary>
+/// Component for a roller coaster that moves along a Track.
+/// </summary>
 [RequireComponent(typeof(TrackSpline))]
 public class RollerCoaster : MonoBehaviour
 {
@@ -19,9 +22,7 @@ public class RollerCoaster : MonoBehaviour
 
     public void StartCoaster(CoasterTrain coaster)
     {
-        coaster.speed = 0.75f;
-        //coaster.curveIndex = 0;
-        //coaster.curveDistance = 0;
+        coaster.speed = 0.75f; // TODO change hard coded value
 
         if (spline.points[0].PowerNext)
         {

@@ -1,5 +1,8 @@
 ﻿using UnityEngine;
 
+/// <summary>
+/// Represents a point belonging to a Bézier curve spline.
+/// </summary>
 [System.Serializable]
 public class SplinePoint
 {
@@ -8,6 +11,9 @@ public class SplinePoint
     [SerializeField] private bool powerPrevious;
     [SerializeField] private float speed;
 
+    /// <summary>
+    /// Getter/setter for the local position of the 
+    /// </summary>
     public Vector3 LocalPosition { get => transform.localPosition; set => transform.localPosition = value; }
     public Vector3 Position { get => transform.position; set => transform.position = value; }
     public Quaternion LocalRotation { get => transform.localRotation; set => transform.localRotation = value; }
