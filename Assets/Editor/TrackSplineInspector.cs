@@ -37,7 +37,7 @@ public class TrackSplineInspector : Editor
 
         try
         {
-            for (int i = 0; i < (spline.points.Length / 3); i++)
+            for (int i = 0; i < (spline.Points.Length / 3); i++)
             {
                 DisplayControls(i);
             }
@@ -58,10 +58,10 @@ public class TrackSplineInspector : Editor
         int startIndex = curveNum * 3;
         Vector3[] transformedPositions = new Vector3[]
         {
-            splineTransform.TransformPoint(spline.points[startIndex].LocalPosition),
-            splineTransform.TransformPoint(spline.points[startIndex + 1].LocalPosition),
-            splineTransform.TransformPoint(spline.points[startIndex + 2].LocalPosition),
-            splineTransform.TransformPoint(spline.points[startIndex + 3].LocalPosition)
+            splineTransform.TransformPoint(spline.Points[startIndex].LocalPosition),
+            splineTransform.TransformPoint(spline.Points[startIndex + 1].LocalPosition),
+            splineTransform.TransformPoint(spline.Points[startIndex + 2].LocalPosition),
+            splineTransform.TransformPoint(spline.Points[startIndex + 3].LocalPosition)
         };
 
         Handles.color = Color.blue; // BIG IF STATEMENT
@@ -72,7 +72,7 @@ public class TrackSplineInspector : Editor
         {
             float size = HandleUtility.GetHandleSize(transformedPositions[i]);
 
-            if ((!spline.continuousLoop || !(i == 3 && curveNum == ((spline.points.Length / 3) - 1))) &&
+            if ((!spline.ContinuousLoop || !(i == 3 && curveNum == ((spline.Points.Length / 3) - 1))) &&
                 Handles.Button(transformedPositions[i], Quaternion.identity, size * 0.04f, size * 0.07f, Handles.DotHandleCap)) // creates a button that returns true on left click
             {
                 spline.selectedIndex = startIndex + i;
@@ -88,14 +88,15 @@ public class TrackSplineInspector : Editor
 
                         EditorGUI.BeginChangeCheck();
 
-                        transformedPositions[i] = Handles.DoPositionHandle(transformedPositions[i], Tools.pivotRotation == PivotRotation.Local ? spline.points[spline.selectedIndex].Rotation : Quaternion.identity); // shows the transform in inspector
+                        transformedPositions[i] = Handles.DoPositionHandle(transformedPositions[i], Tools.pivotRotation == PivotRotation.Local ?
+                            spline.Points[spline.selectedIndex].Rotation : Quaternion.identity); // shows the transform in inspector
 
                         if (EditorGUI.EndChangeCheck())
                         {
                             Undo.RecordObject(spline, "Move Point"); // allows support for undoing move
                             EditorUtility.SetDirty(spline); // prompts user to save if point is moved and exiting/reloading the scene
 
-                            spline.points[spline.selectedIndex].LocalPosition = splineTransform.InverseTransformPoint(transformedPositions[i]);
+                            spline.Points[spline.selectedIndex].LocalPosition = splineTransform.InverseTransformPoint(transformedPositions[i]);
                             SetConnectedPoints(spline.selectedIndex, lastPosition, prevDistance, nextDistance);
                             spline.UpdateSelected(spline.selectedIndex);
                         }
@@ -106,10 +107,12 @@ public class TrackSplineInspector : Editor
                     {
                         EditorGUI.BeginChangeCheck();
 
-                        Vector3 fwd = spline.selectedIndex == spline.points.Length - 1 ? (spline.points[spline.selectedIndex].Position - spline.points[spline.selectedIndex - 1].Position).normalized :
-                            (spline.points[spline.selectedIndex + 1].Position - spline.points[spline.selectedIndex].Position).normalized;
+                        Vector3 fwd = spline.selectedIndex == spline.Points.Length - 1 ? (spline.Points[spline.selectedIndex].Position -
+                            spline.Points[spline.selectedIndex - 1].Position).normalized :
+                            (spline.Points[spline.selectedIndex + 1].Position - spline.Points[spline.selectedIndex].Position).normalized;
 
-                        Quaternion tempRotation = Handles.DoRotationHandle(Tools.pivotRotation == PivotRotation.Local ? spline.points[spline.selectedIndex].Rotation : Quaternion.identity, transformedPositions[i]);
+                        Quaternion tempRotation = Handles.DoRotationHandle(Tools.pivotRotation == PivotRotation.Local ?
+                            spline.Points[spline.selectedIndex].Rotation : Quaternion.identity, transformedPositions[i]);
                         Quaternion actualRotation = Quaternion.LookRotation(fwd, Vector3.ProjectOnPlane(tempRotation * Vector3.up, fwd).normalized);
 
                         if (EditorGUI.EndChangeCheck())
@@ -117,10 +120,10 @@ public class TrackSplineInspector : Editor
                             Undo.RecordObject(spline, "Rotate Point"); // allows support for undoing move
                             EditorUtility.SetDirty(spline); // prompts user to save if point is moved and exiting/reloading the scene
 
-                            spline.points[spline.selectedIndex].Rotation = actualRotation;
-                            if (spline.selectedIndex == 0 && spline.continuousLoop)
+                            spline.Points[spline.selectedIndex].Rotation = actualRotation;
+                            if (spline.selectedIndex == 0 && spline.ContinuousLoop)
                             {
-                                spline.points[spline.points.Length - 1].Rotation = actualRotation;
+                                spline.Points[spline.Points.Length - 1].Rotation = actualRotation;
                             }
                             spline.UpdateSelected(spline.selectedIndex);
                         }
@@ -164,7 +167,7 @@ public class TrackSplineInspector : Editor
                 }
 
                 // Power the next rail
-                if (spline.selectedIndex != spline.points.Length - 1)
+                if (spline.selectedIndex != spline.Points.Length - 1)
                 {
                     EditorGUILayout.PropertyField(selectedPowerNext, new GUIContent("Power Next"), GUILayout.Height(20));
                     if (serializedObject.hasModifiedProperties)
@@ -175,7 +178,7 @@ public class TrackSplineInspector : Editor
                 }
 
                 // Power the previous rail
-                if (spline.selectedIndex != 0 || spline.continuousLoop)
+                if (spline.selectedIndex != 0 || spline.ContinuousLoop)
                 {
                     EditorGUILayout.PropertyField(selectedPowerPrevious, new GUIContent("Power Previous"), GUILayout.Height(20));
                     if (serializedObject.hasModifiedProperties)
@@ -186,8 +189,8 @@ public class TrackSplineInspector : Editor
                 }
 
                 // Set speed of powered rail
-                if ((spline.points[spline.selectedIndex].PowerPrevious && !spline.points[spline.selectedIndex].PowerNext) || 
-                    (spline.selectedIndex == 0 && spline.continuousLoop && spline.points[spline.points.Length - 1].PowerPrevious))
+                if ((spline.Points[spline.selectedIndex].PowerPrevious && !spline.Points[spline.selectedIndex].PowerNext) || 
+                    (spline.selectedIndex == 0 && spline.ContinuousLoop && spline.Points[spline.Points.Length - 1].PowerPrevious))
                 {
                     EditorGUILayout.PropertyField(selectedSpeed, new GUIContent("Speed"), GUILayout.Height(20));
                     if (serializedObject.hasModifiedProperties)
@@ -220,7 +223,7 @@ public class TrackSplineInspector : Editor
 
             GUILayout.Space(8);
 
-            EditorGUILayout.PropertyField(gravity, new GUIContent("Gravity"), GUILayout.Height(15)); // // No changes must be made for this
+            EditorGUILayout.PropertyField(gravity, new GUIContent("Gravity"), GUILayout.Height(15));
             if (serializedObject.hasModifiedProperties)
             {
                 serializedObject.ApplyModifiedProperties();
@@ -234,26 +237,26 @@ public class TrackSplineInspector : Editor
                 GetPointPosDist(1, out Vector3 lastPosition, out float prevDistance, out float nextDistance);
                 SetConnectedPoints(1, lastPosition, prevDistance, nextDistance);
 
-                spline.points[spline.points.Length - 1].Position = spline.points[0].Position;
+                spline.Points[spline.Points.Length - 1].Position = spline.Points[0].Position;
 
-                if (spline.continuousLoop) // Switch to continuous from non
+                if (spline.ContinuousLoop) // Switch to continuous from non
                 {
-                    spline.points[0].PowerPrevious = spline.points[spline.points.Length - 1].PowerPrevious;
-                    spline.points[spline.points.Length - 1].PowerNext = spline.points[0].PowerNext;
-                    spline.points[0].Speed = spline.points[spline.points.Length - 1].Speed;
+                    spline.Points[0].PowerPrevious = spline.Points[spline.Points.Length - 1].PowerPrevious;
+                    spline.Points[spline.Points.Length - 1].PowerNext = spline.Points[0].PowerNext;
+                    spline.Points[0].Speed = spline.Points[spline.Points.Length - 1].Speed;
 
-                    if (spline.loops <= 0)
+                    if (spline.Loops <= 0)
                     {
-                        spline.loops = 1;
+                        spline.Loops = 1;
                     }
                 }
                 else // Switch from continuous to non
                 {
-                    spline.points[0].PowerPrevious = false;
-                    spline.points[spline.points.Length - 1].PowerNext = false;
+                    spline.Points[0].PowerPrevious = false;
+                    spline.Points[spline.Points.Length - 1].PowerNext = false;
                 }
 
-                if (spline.selectedIndex == spline.points.Length - 1)
+                if (spline.selectedIndex == spline.Points.Length - 1)
                 {
                     spline.selectedIndex = 0;
                 }
@@ -261,15 +264,15 @@ public class TrackSplineInspector : Editor
             }
 
             // Setting loop amount
-            if (spline.continuousLoop)
+            if (spline.ContinuousLoop)
             {
                 EditorGUILayout.PropertyField(loops, new GUIContent("Loops"), GUILayout.Height(15)); // No changes must be made for this
                 if (serializedObject.hasModifiedProperties)
                 {
                     serializedObject.ApplyModifiedProperties();
-                    if (spline.loops <= 0)
+                    if (spline.Loops <= 0)
                     {
-                        spline.loops = 1;
+                        spline.Loops = 1;
                     }
                 }
             }
@@ -310,7 +313,7 @@ public class TrackSplineInspector : Editor
             int remainder = spline.selectedIndex % 3;
             int startIndex = spline.selectedIndex - remainder;
 
-            if (startIndex == spline.points.Length - 1)
+            if (startIndex == spline.Points.Length - 1)
             {
                 spline.AddCurve();
             }
@@ -330,7 +333,7 @@ public class TrackSplineInspector : Editor
         {
             Undo.RecordObject(spline, "Remove Curve");
 
-            if (spline.selectedIndex > 0 && spline.points.Length > 4)
+            if (spline.selectedIndex > 0 && spline.Points.Length > 4)
             {
                 int startIndex;
                 switch (spline.selectedIndex % 3)
@@ -338,11 +341,11 @@ public class TrackSplineInspector : Editor
                     case 0:
                         startIndex = spline.selectedIndex;
 
-                        if (startIndex == spline.points.Length - 1)
+                        if (startIndex == spline.Points.Length - 1)
                         {
-                            if (spline.selectedIndex - 3 <= spline.points.Length - 4)
+                            if (spline.selectedIndex - 3 <= spline.Points.Length - 4)
                             {
-                                spline.selectedIndex = spline.points.Length - 4;
+                                spline.selectedIndex = spline.Points.Length - 4;
                                 spline.UpdateSelected(spline.selectedIndex);
                             }
 
@@ -381,13 +384,13 @@ public class TrackSplineInspector : Editor
         {
             Undo.RecordObject(spline, "Add Curve to End");
             spline.AddCurve();
-            if (spline.points[spline.selectedIndex].PowerNext || spline.continuousLoop)
+            if (spline.Points[spline.selectedIndex].PowerNext || spline.ContinuousLoop)
             {
-                if (spline.continuousLoop)
+                if (spline.ContinuousLoop)
                 {
                     GetPointPosDist(1, out Vector3 lastPosition, out float prevDistance, out float nextDistance);
                     SetConnectedPoints(1, lastPosition, prevDistance, nextDistance);
-                    spline.points[spline.points.Length - 1].Position = spline.points[0].Position;
+                    spline.Points[spline.Points.Length - 1].Position = spline.Points[0].Position;
                 }
 
                 spline.UpdateSelected(spline.selectedIndex);
@@ -398,23 +401,23 @@ public class TrackSplineInspector : Editor
         {
             Undo.RecordObject(spline, "Remove Curve from End");
 
-            if (spline.points.Length >= 7)
+            if (spline.Points.Length >= 7)
             {
-                if (spline.selectedIndex - 3 <= spline.points.Length - 4)
+                if (spline.selectedIndex - 3 <= spline.Points.Length - 4)
                 {
-                    spline.selectedIndex = spline.points.Length - 4;
+                    spline.selectedIndex = spline.Points.Length - 4;
                     spline.UpdateSelected(spline.selectedIndex);
                 }
 
                 spline.RemoveCurve();
             }
 
-            if (spline.continuousLoop)
+            if (spline.ContinuousLoop)
             {
                 GetPointPosDist(1, out Vector3 lastPosition, out float prevDistance, out float nextDistance);
                 SetConnectedPoints(1, lastPosition, prevDistance, nextDistance);
-                spline.points[spline.points.Length - 1].Position = spline.points[0].Position;
-                if (spline.selectedIndex >= spline.points.Length - 1)
+                spline.Points[spline.Points.Length - 1].Position = spline.Points[0].Position;
+                if (spline.selectedIndex >= spline.Points.Length - 1)
                 {
                     spline.selectedIndex = 0;
                 }
@@ -428,6 +431,7 @@ public class TrackSplineInspector : Editor
     /// <summary>
     /// Method to get necessary value before a spline point is moved. To be used before SetConnectedPoints.
     /// </summary>
+    /// <param name="index"></param>
     /// <param name="lastPosition"></param>
     /// <param name="prevDistance"></param>
     /// <param name="nextDistance"></param>
@@ -439,26 +443,27 @@ public class TrackSplineInspector : Editor
         switch (index % 3)
         {
             case 0:
-                lastPosition = spline.points[index].LocalPosition;
+                lastPosition = spline.Points[index].LocalPosition;
                 break;
             case 1:
                 if (index > 1)
                 {
-                    prevDistance = Vector3.Distance(spline.points[index - 2].LocalPosition, spline.points[index - 1].LocalPosition);
+                    prevDistance = Vector3.Distance(spline.Points[index - 2].LocalPosition, spline.Points[index - 1].LocalPosition);
                 }
-                else if (spline.continuousLoop)
+                else if (spline.ContinuousLoop)
                 {
-                    prevDistance = Vector3.Distance(spline.points[spline.points.Length - 2].LocalPosition, spline.points[spline.points.Length - 1].LocalPosition);
+                    prevDistance = Vector3.Distance(spline.Points[spline.Points.Length - 2].LocalPosition,
+                        spline.Points[spline.Points.Length - 1].LocalPosition);
                 }
                 break;
             case 2:
-                if (index < spline.points.Length - 2)
+                if (index < spline.Points.Length - 2)
                 {
-                    nextDistance = Vector3.Distance(spline.points[index + 2].LocalPosition, spline.points[index + 1].LocalPosition);
+                    nextDistance = Vector3.Distance(spline.Points[index + 2].LocalPosition, spline.Points[index + 1].LocalPosition);
                 }
-                else if (spline.continuousLoop)
+                else if (spline.ContinuousLoop)
                 {
-                    nextDistance = Vector3.Distance(spline.points[1].LocalPosition, spline.points[0].LocalPosition);
+                    nextDistance = Vector3.Distance(spline.Points[1].LocalPosition, spline.Points[0].LocalPosition);
                 }
                 break;
         }
@@ -481,41 +486,47 @@ public class TrackSplineInspector : Editor
         switch (index % 3)
         {
             case 0:
-                Vector3 currPosition = spline.points[index].LocalPosition;
+                Vector3 currPosition = spline.Points[index].LocalPosition;
                 Vector3 changePosition = currPosition - lastPosition;
 
                 if (index > 0)
                 {
-                    Vector4 prevPosition = spline.points[index - 1].LocalPosition;
-                    spline.points[index - 1].LocalPosition = new Vector4(prevPosition.x + changePosition.x, prevPosition.y + changePosition.y, prevPosition.z + changePosition.z, prevPosition.w);
+                    Vector4 prevPosition = spline.Points[index - 1].LocalPosition;
+                    spline.Points[index - 1].LocalPosition = new Vector4(prevPosition.x + changePosition.x, prevPosition.y + changePosition.y,
+                        prevPosition.z + changePosition.z, prevPosition.w);
                 }
-                else if (spline.continuousLoop)
+                else if (spline.ContinuousLoop)
                 {
-                    Vector4 prevPosition = spline.points[spline.points.Length - 2].LocalPosition;
-                    spline.points[spline.points.Length - 2].LocalPosition = new Vector4(prevPosition.x + changePosition.x, prevPosition.y + changePosition.y, prevPosition.z + changePosition.z, prevPosition.w);
-                    spline.points[spline.points.Length - 1].LocalPosition = currPosition;
+                    Vector4 prevPosition = spline.Points[spline.Points.Length - 2].LocalPosition;
+                    spline.Points[spline.Points.Length - 2].LocalPosition = new Vector4(prevPosition.x + changePosition.x,
+                        prevPosition.y + changePosition.y, prevPosition.z + changePosition.z, prevPosition.w);
+                    spline.Points[spline.Points.Length - 1].LocalPosition = currPosition;
                 }
-                if (index < spline.points.Length - 1)
+                if (index < spline.Points.Length - 1)
                 {
-                    Vector4 nextPosition = spline.points[index + 1].LocalPosition;
-                    spline.points[index + 1].LocalPosition = new Vector3(nextPosition.x + changePosition.x, nextPosition.y + changePosition.y, nextPosition.z + changePosition.z);
+                    Vector4 nextPosition = spline.Points[index + 1].LocalPosition;
+                    spline.Points[index + 1].LocalPosition = new Vector3(nextPosition.x + changePosition.x, nextPosition.y + changePosition.y,
+                        nextPosition.z + changePosition.z);
                 }
                 break;
             case 1:
-                endPoint = spline.points[index - 1];
+                endPoint = spline.Points[index - 1];
                 endPointPosition = endPoint.LocalPosition;
-                selectedPosition = spline.points[index].LocalPosition;
-                direction = new Vector3(selectedPosition.x - endPointPosition.x, selectedPosition.y - endPointPosition.y, selectedPosition.z - endPointPosition.z).normalized;
+                selectedPosition = spline.Points[index].LocalPosition;
+                direction = new Vector3(selectedPosition.x - endPointPosition.x, selectedPosition.y - endPointPosition.y,
+                    selectedPosition.z - endPointPosition.z).normalized;
 
                 if (index > 1)
                 {
                     direction *= prevDistance;
-                    spline.points[index - 2].LocalPosition = new Vector3(endPointPosition.x - direction.x, endPointPosition.y - direction.y, endPointPosition.z - direction.z);
+                    spline.Points[index - 2].LocalPosition = new Vector3(endPointPosition.x - direction.x, endPointPosition.y - direction.y,
+                        endPointPosition.z - direction.z);
                 }
-                else if (spline.continuousLoop)
+                else if (spline.ContinuousLoop)
                 {
                     direction *= prevDistance;
-                    spline.points[spline.points.Length - 2].LocalPosition = new Vector3(endPointPosition.x - direction.x, endPointPosition.y - direction.y, endPointPosition.z - direction.z);
+                    spline.Points[spline.Points.Length - 2].LocalPosition = new Vector3(endPointPosition.x - direction.x,
+                        endPointPosition.y - direction.y, endPointPosition.z - direction.z);
 
                     // rotation
                     railRotation = endPoint.LocalRotation.eulerAngles.z;
@@ -523,7 +534,7 @@ public class TrackSplineInspector : Editor
                     localEuler = endPoint.LocalRotation.eulerAngles;
                     localEuler.z = railRotation;
                     endPoint.LocalRotation = Quaternion.Euler(localEuler);
-                    spline.points[spline.points.Length - 1].LocalRotation = endPoint.LocalRotation;
+                    spline.Points[spline.Points.Length - 1].LocalRotation = endPoint.LocalRotation;
                     break;
                 }
 
@@ -534,20 +545,23 @@ public class TrackSplineInspector : Editor
                 endPoint.LocalRotation = Quaternion.Euler(localEuler);
                 break;
             case 2:
-                endPoint = spline.points[index + 1];
+                endPoint = spline.Points[index + 1];
                 endPointPosition = endPoint.LocalPosition;
-                selectedPosition = spline.points[index].LocalPosition;
-                direction = new Vector3(selectedPosition.x - endPointPosition.x, selectedPosition.y - endPointPosition.y, selectedPosition.z - endPointPosition.z).normalized;
+                selectedPosition = spline.Points[index].LocalPosition;
+                direction = new Vector3(selectedPosition.x - endPointPosition.x, selectedPosition.y - endPointPosition.y,
+                    selectedPosition.z - endPointPosition.z).normalized;
 
-                if (index < spline.points.Length - 2)
+                if (index < spline.Points.Length - 2)
                 {
                     direction *= nextDistance;
-                    spline.points[index + 2].LocalPosition = new Vector3(endPointPosition.x - direction.x, endPointPosition.y - direction.y, endPointPosition.z - direction.z);
+                    spline.Points[index + 2].LocalPosition = new Vector3(endPointPosition.x - direction.x, endPointPosition.y - direction.y,
+                        endPointPosition.z - direction.z);
                 }
-                else if (spline.continuousLoop)
+                else if (spline.ContinuousLoop)
                 {
                     direction *= nextDistance;
-                    spline.points[1].LocalPosition = new Vector3(endPointPosition.x - direction.x, endPointPosition.y - direction.y, endPointPosition.z - direction.z);
+                    spline.Points[1].LocalPosition = new Vector3(endPointPosition.x - direction.x, endPointPosition.y - direction.y,
+                        endPointPosition.z - direction.z);
 
                     // rotation
                     railRotation = endPoint.LocalRotation.eulerAngles.z;
@@ -555,7 +569,7 @@ public class TrackSplineInspector : Editor
                     localEuler = endPoint.LocalRotation.eulerAngles;
                     localEuler.z = railRotation;
                     endPoint.LocalRotation = Quaternion.Euler(localEuler);
-                    spline.points[0].LocalRotation = endPoint.LocalRotation;
+                    spline.Points[0].LocalRotation = endPoint.LocalRotation;
                     break;
                 }
 
