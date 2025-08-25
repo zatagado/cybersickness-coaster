@@ -74,12 +74,12 @@ public class MeasureBalance : MonoBehaviour
     /// <summary>
     /// The distance from the user's head you would like the measuring balance text to be displayed.
     /// </summary>
-    [SerializeField] private float textDistanceFromHead = 2.0f;
+    [SerializeField] private float textDistanceFromHead;
     
     /// <summary>
     /// The height of the measuring balance text off of the ground.
     /// </summary>
-    [SerializeField] private float textHeight = 1.5f;
+    [SerializeField] private float textHeight;
 
     /// <summary>
     /// The position you would like to move the user to to begin measuring.
@@ -116,7 +116,7 @@ public class MeasureBalance : MonoBehaviour
     /// Main update loop with state machine.
     /// </summary>
     /// <returns></returns>
-    public DemoState Tick()
+    public ExperimentState Tick()
     {
         switch (currentState)
         {
@@ -137,9 +137,9 @@ public class MeasureBalance : MonoBehaviour
                 break;
             case MeasureBalanceState.end:
                 End();
-                return DemoState.survey;
+                return ExperimentState.survey;
         }
-        return DemoState.balanceTest;
+        return ExperimentState.balanceTest;
     }
 
     /// <summary>

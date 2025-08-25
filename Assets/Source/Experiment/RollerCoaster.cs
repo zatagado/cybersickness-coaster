@@ -121,7 +121,7 @@ public class RollerCoaster : MonoBehaviour
             coaster.IsInitialPowered = true;
             if (coaster.CurveIndex + 1 >= spline.Points.Length / 3) // coaster traveled an entire loop
             {
-                if (coaster.CurrentLoop++ < spline.Loops && spline.ContinuousLoop)
+                if (coaster.CurrentLoop++ < spline.loops && spline.isContinuousLoop)
                 {
                     coaster.CurveDistance -= spline.CurveLookUpTables[coaster.CurveIndex].CurveLength; // subtract the distance of the curve and go to the 0th curve
                     coaster.CurveIndex = 0;
@@ -201,7 +201,7 @@ public class RollerCoaster : MonoBehaviour
         Vector3 normal = (Vector3.up + Vector3.Project(Vector3.down, currentDirection)).normalized;
 
         // Calculate the added speed
-        float addedSpeed = (currentDirection.y > 0 ? -1 : 1) * spline.Gravity * Mathf.Sin(Vector3.Angle(normal, Vector3.up) * Mathf.Deg2Rad) *
+        float addedSpeed = (currentDirection.y > 0 ? -1 : 1) * spline.gravity * Mathf.Sin(Vector3.Angle(normal, Vector3.up) * Mathf.Deg2Rad) *
             Time.deltaTime;
 
         coaster.Speed += addedSpeed;

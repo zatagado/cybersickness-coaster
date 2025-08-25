@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 
 /// <summary>
-/// Scriptable object for storing a coaster track.
+/// Scriptable object for storing coaster track data.
 /// </summary>
 [CreateAssetMenu(menuName = "Cybersick Coaster Track")]
 public class Track : ScriptableObject
@@ -24,7 +24,7 @@ public class Track : ScriptableObject
     /// <summary>
     /// The points that make up the path of the track. Four points make up a Bézier curve. A collection of Bézier curves makes a spline.
     /// </summary>
-    [SerializeField] private StoredSplinePoint[] points;
+    [SerializeField] private SplinePoint.StoredSplinePoint[] points;
 
     /// <summary>
     /// Look up tables for each Bézier curve along the track.
@@ -49,7 +49,7 @@ public class Track : ScriptableObject
     /// <summary>
     /// Getter/setter for the points of the track.
     /// </summary>
-    public StoredSplinePoint[] Points { get => points; set => points = value; }
+    public SplinePoint.StoredSplinePoint[] Points { get => points; set => points = value; }
 
     /// <summary>
     /// Getter/setter for the curve look up tables of the track.

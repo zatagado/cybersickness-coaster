@@ -1,14 +1,33 @@
 ﻿using UnityEngine;
 using UnityEngine.EventSystems;
 
-// TODO think this handles using the ui with the mouse as well as the vr controllers
+/// <summary>
+/// Handles VR input emulating mouse input for the Unity UI
+/// </summary>
 public class VRMouseInputModule : StandaloneInputModule
 {
-    public PointerEventData Data { private set; get; } // could just make a private variable
+    /// <summary>
+    /// The pointer event data.
+    /// </summary>
+    public PointerEventData Data { private set; get; }
+
+    /// <summary>
+    /// The current object being interacted with.
+    /// </summary>
     public GameObject CurrentObject { get; set; }
+
+    /// <summary>
+    /// Whether the interact button is being pressed.
     public bool InteractDown { get; set; }
+
+    /// <summary>
+    /// Whether the interact button is being released.
+    /// </summary>
     public bool InteractUp { get; set; }
 
+    /// <summary>
+    /// Initialization.
+    /// </summary>
     protected override void Awake()
     {
         base.Awake();
@@ -19,6 +38,9 @@ public class VRMouseInputModule : StandaloneInputModule
         InteractUp = false;
     }
 
+    /// <summary>
+    /// Main update loop.
+    /// </summary>
     public override void Process()
     {
         if (Input.GetMouseButton(0))
@@ -31,7 +53,7 @@ public class VRMouseInputModule : StandaloneInputModule
 
             if (CurrentObject)
             {
-                eventSystem.RaycastAll(Data, m_RaycastResultCache); // is this needed
+                eventSystem.RaycastAll(Data, m_RaycastResultCache);
                 Data.pointerCurrentRaycast = FindFirstRaycast(m_RaycastResultCache);
 
                 m_RaycastResultCache.Clear();
@@ -51,6 +73,10 @@ public class VRMouseInputModule : StandaloneInputModule
         }
     }
 
+    /// <summary>
+    /// Processes a press event on the UI.
+    /// </summary>
+    /// <param name="data">The pointer event data.</param>
     private void ProcessPress(PointerEventData data)
     {
         data.pointerPressRaycast = data.pointerCurrentRaycast;
@@ -67,6 +93,10 @@ public class VRMouseInputModule : StandaloneInputModule
         data.rawPointerPress = CurrentObject;
     }
 
+    /// <summary>
+    /// Processes a release event on the UI.
+    /// </summary>
+    /// <param name="data">The pointer event data.</param>
     private void ProcessRelease(PointerEventData data)
     {
         ExecuteEvents.Execute(data.pointerPress, data, ExecuteEvents.pointerUpHandler);

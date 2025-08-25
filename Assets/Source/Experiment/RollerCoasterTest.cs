@@ -82,7 +82,7 @@ public class RollerCoasterTest : MonoBehaviour
     /// Main update loop with state machine.
     /// </summary>
     /// <returns>The current demo state.</returns>
-    public DemoState Tick()
+    public ExperimentState Tick()
     {
         switch (currRollerCoasterTestState)
         {
@@ -100,10 +100,10 @@ public class RollerCoasterTest : MonoBehaviour
                 break;
             case RollerCoasterTestState.end:
                 End();
-                return DemoState.balanceTest;
+                return ExperimentState.balanceTest;
         }
         time += Time.deltaTime;
-        return DemoState.rollerCoasterTest;
+        return ExperimentState.rollerCoasterTest;
     }
 
     /// <summary>

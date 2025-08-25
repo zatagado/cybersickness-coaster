@@ -8,12 +8,12 @@ using UnityEngine.Networking;
 /// <summary>
 /// State machine component for managing the experiment.
 /// </summary>
-public class DemoController : MonoBehaviour // TODO rename this
+public class ExperimentController : MonoBehaviour
 {
     /// <summary>
-    /// Enum representing the current state of the application.
+    /// Enum representing the current state of the experiment.
     /// </summary>
-    private DemoState currentDemoState = DemoState.start;
+    private ExperimentState currentExperimentState = ExperimentState.start;
 
     /// <summary>
     /// Controller object for running the roller coaster test.
@@ -21,14 +21,14 @@ public class DemoController : MonoBehaviour // TODO rename this
     [SerializeField] private RollerCoasterTest rollerCoasterTest;
 
     /// <summary>
-    /// Controller object for gathering survey data.
-    /// </summary>
-    [SerializeField] private Survey survey;
-
-    /// <summary>
     /// Controller object for measuring balance data.
     /// </summary>
     [SerializeField] private MeasureBalance balanceTest;
+
+    /// <summary>
+    /// Controller object for gathering survey data.
+    /// </summary>
+    [SerializeField] private Survey survey;
 
     /// <summary>
     /// The number of times to repeat the experiment, per session.
@@ -42,14 +42,15 @@ public class DemoController : MonoBehaviour // TODO rename this
     private bool isLoadingScene;
 
     /// <summary>
-    /// Qualtrics survey URL to send data to.
+    /// Survey URL to send data to.
+    /// We used Qualtrics, but any API that can accept the data as URL parameters will work.
     /// </summary>
     [TextArea(1, 20)][SerializeField] private string surveyURL;
 
     /// <summary>
-    /// Getter/setter property for the current state of the application.
+    /// Getter/setter property for the current state of the experiment.
     /// </summary>
-    public DemoState CurrentDemoState { get => currentDemoState; set => currentDemoState = value; }
+    public ExperimentState CurrentDemoState { get => currentExperimentState; set => currentExperimentState = value; }
 
     /// <summary>
     /// Set the environment active or inactive.
@@ -65,7 +66,7 @@ public class DemoController : MonoBehaviour // TODO rename this
     /// </summary>
     private async void Start()
     {
-        currentDemoState = DemoState.start;
+        currentExperimentState = ExperimentState.start;
 
         Debug.Log("Loading demo.");
         CybersickData.LoadData();
@@ -95,19 +96,19 @@ public class DemoController : MonoBehaviour // TODO rename this
 
         await Task.Delay(1);
 
-        currentDemoState = DemoState.survey;
+        currentExperimentState = ExperimentState.survey;
         Debug.Log("Finished loading.");
         isLoadingScene = false;
     }
 
     /// <summary>
-    /// Main update loop with state machine.
+    /// Main update loop with state machine. Manages running the roller coaster test, balance measuring, survey, and sends data to Qualtrics.
     /// </summary>
     private void Update()
     {
         if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
-            currentDemoState = DemoState.survey;
+            currentExperimentState = ExperimentState.survey;
             currentLevel = levels; //ensure it will quit after sending the data
             Debug.Log("Running time was " + rollerCoasterTest.GetRunTime());
         }
@@ -117,34 +118,41 @@ public class DemoController : MonoBehaviour // TODO rename this
         {
             Application.Quit();
         }
-        switch (currentDemoState)
+        switch (currentExperimentState)
         {
-            case DemoState.start:
+            case ExperimentState.start:
                 break;
-            case DemoState.rollerCoasterTest:
-                currentDemoState = rollerCoasterTest.Tick();         
+            case ExperimentState.rollerCoasterTest:
+                currentExperimentState = rollerCoasterTest.Tick();         
                 break;
-            case DemoState.balanceTest:
-                currentDemoState = balanceTest.Tick();
+            case ExperimentState.balanceTest:
+                currentExperimentState = balanceTest.Tick();
                 break;
-            case DemoState.survey:
-                currentDemoState = survey.Tick();
+            case ExperimentState.survey:
+                currentExperimentState = survey.Tick();
                 break;
-            case DemoState.send:
-                StartCoroutine(SendLevelToQualtrics(currentLevel, rollerCoasterTest.GetTargetsDestroyedRatio(), rollerCoasterTest.GetRunTime(),
-                    balanceTest.GetMomentOfInertiaResults(), survey.Scales));
+            case ExperimentState.send:
+                if (surveyURL.Length > 0)
+                {
+                    StartCoroutine(SendLevelToQualtrics(currentLevel, rollerCoasterTest.GetTargetsDestroyedRatio(), rollerCoasterTest.GetRunTime(),
+                        balanceTest.GetMomentOfInertiaResults(), survey.Scales));
+                }
+                else
+                {
+                    Debug.LogError("No survey URL set. Please add a survey URL if you wish to record data.");
+                }
 
                 if (currentLevel < levels)
                 {
                     currentLevel++;
-                    currentDemoState = DemoState.rollerCoasterTest;
+                    currentExperimentState = ExperimentState.rollerCoasterTest;
                 }
                 else
                 {
-                    currentDemoState = DemoState.end;
+                    currentExperimentState = ExperimentState.end;
                 }
                 break;
-            case DemoState.end:
+            case ExperimentState.end:
                 if (!isLoadingScene)
                 {
                     isLoadingScene = true;
@@ -152,24 +160,6 @@ public class DemoController : MonoBehaviour // TODO rename this
                 }
                 break;
         }
-    }
-
-    /// <summary>
-    /// Send start data to the Qualtrics survey API coroutine.
-    /// </summary>
-    private IEnumerator SendStartToQualtrics()
-    {
-        // Form containing data
-        WWWForm form = new WWWForm();
-        form.AddField("pid", PlayerPrefs.GetString("pid"));
-        form.AddField("session", PlayerPrefs.GetInt("session"));
-
-        // Input the data into the site
-        using (UnityWebRequest request = UnityWebRequest.Post(surveyURL, form))
-        {
-            yield return request.SendWebRequest();
-        }
-        Debug.Log("Sent");
     }
 
     /// <summary>
@@ -183,18 +173,6 @@ public class DemoController : MonoBehaviour // TODO rename this
     {
         // Form containing data
         WWWForm form = new WWWForm();
-
-        // form.AddField("balloons popped ratio", balloonsPoppedRatio.ToString());
-        // form.AddField("moment of inertia", moi.ToString());
-        // form.AddField("general discomfort", surveyData[0]);
-        // form.AddField("fatigue", surveyData[1]);
-        // form.AddField("eyestrain", surveyData[2]);
-        // form.AddField("difficulty focusing", surveyData[3]);
-        // form.AddField("headache", surveyData[4]);
-        // form.AddField("fullness of head", surveyData[5]);
-        // form.AddField("blurred vision", surveyData[6]);
-        // form.AddField("dizzy", surveyData[7]);
-        // form.AddField("vertigo", surveyData[8]);
 
         form.AddField("pid", CybersickData.Pid);
         form.AddField("session", CybersickData.Session);

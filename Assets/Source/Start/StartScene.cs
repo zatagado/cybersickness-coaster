@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -39,7 +40,10 @@ public class StartScene : MonoBehaviour
     [SerializeField] private Transform playerHead;
     [SerializeField] private VRControllers controllers;
 
-    private bool loadingScene;
+    [SerializeField] private String experimentSceneName;
+    [SerializeField] private String noInternetSceneName;
+
+    private bool isLoadingScene;
 
     /// <summary>
     /// Initializes the start scene.
@@ -85,7 +89,7 @@ public class StartScene : MonoBehaviour
             currentText.position = playerHead.position + (currentText.forward * textDistanceFromHead) + new Vector3(0.0f, -textDistanceDownward, 0.0f);
         };
 
-        loadingScene = false;
+        isLoadingScene = false;
     }
 
     /// <summary>
@@ -130,17 +134,17 @@ public class StartScene : MonoBehaviour
                 }
                 break;
             case StartState.loading:
-                if (!loadingScene)
+                if (!isLoadingScene)
                 {
-                    loadingScene = true;
+                    isLoadingScene = true;
                     if (Application.internetReachability == NetworkReachability.NotReachable)
                     {
                         Debug.LogError("Could not establish a connection to the internet.");
-                        LoadScene("No_Internet_Scene");
+                        LoadScene(noInternetSceneName);
                     }
                     else
                     {
-                        LoadScene("Demo_Scene");
+                        LoadScene(experimentSceneName);
                     }
                 }
                 break;

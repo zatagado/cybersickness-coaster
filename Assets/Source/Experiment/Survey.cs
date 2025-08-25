@@ -94,7 +94,7 @@ public class Survey : MonoBehaviour
 
     [SerializeField] private Transform surveyPosition;
 
-    [SerializeField] private VRPointers vrPointers;
+    private VRPointers vrPointers;
 
     [SerializeField] private readonly int endExperimentThreshold;
 
@@ -177,7 +177,7 @@ public class Survey : MonoBehaviour
     /// Main update loop with state machine.
     /// </summary>
     /// <returns>The next state.</returns>
-    public DemoState Tick()
+    public ExperimentState Tick()
     {
         switch (currentSurveyState)
         {
@@ -190,11 +190,11 @@ public class Survey : MonoBehaviour
                 break;
             case SurveyState.end:
                 End();
-                return DemoState.send; // order of events?
+                return ExperimentState.send; // order of events?
             case SurveyState.quit:
-                return DemoState.end;
+                return ExperimentState.end;
         }
-        return DemoState.survey; // CHECK THIS STATEMENT IF ISSUES WITH SURVEY NOT EXECUTING
+        return ExperimentState.survey; // CHECK THIS STATEMENT IF ISSUES WITH SURVEY NOT EXECUTING
     }
 
     /// <summary>

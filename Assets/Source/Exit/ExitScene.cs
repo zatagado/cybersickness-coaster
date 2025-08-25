@@ -16,7 +16,6 @@ public class ExitScene : MonoBehaviour
     /// </summary>
     private void Start()
     {
-        // TODO create a singleton for the player object
         Transform centeredPlayer = GameObject.Find("Player (Centered)")?.transform;
         if (centeredPlayer)
         {
@@ -38,5 +37,14 @@ public class ExitScene : MonoBehaviour
         {
             Application.Quit();
         }
+    }
+
+    /// <summary>
+    /// Quits the application.
+    /// This is used for the exit button in the scene.
+    /// </summary>
+    public void Exit()
+    {
+        Application.Quit();
     }
 }

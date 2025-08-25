@@ -206,7 +206,7 @@ public class LookAtTarget : MonoBehaviour
         {
             if (targetCurveIndex + 1 >= spline.Points.Length / 3)
             {
-                if (player.CurrentLoop + 1 < spline.Loops && spline.ContinuousLoop)
+                if (player.CurrentLoop + 1 < spline.loops && spline.isContinuousLoop)
                 {
                     targetDistance -= spline.CurveLookUpTables[targetCurveIndex].CurveLength; // subtract the distance of the curve and go to the 0th curve
                     targetCurveIndex = 0;

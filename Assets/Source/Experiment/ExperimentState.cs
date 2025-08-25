@@ -1,7 +1,7 @@
 ﻿/// <summary>
 /// Enum representing the current state of the application.
 /// </summary>
-public enum DemoState
+public enum ExperimentState
 {
     start,
     send,

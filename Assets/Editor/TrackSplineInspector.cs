@@ -15,9 +15,12 @@ public class TrackSplineInspector : Editor
     private SerializedProperty selectedPowerPrevious;
     private SerializedProperty selectedSpeed;
     private SerializedProperty gravity;
-    private SerializedProperty continuousLoop;
+    private SerializedProperty isContinuousLoop;
     private SerializedProperty loops;
 
+    /// <summary>
+    /// Initializes the serialized properties.
+    /// </summary>
     private void OnEnable()
     {
         selectedPosition = serializedObject.FindProperty("selectedPosition");
@@ -26,13 +29,19 @@ public class TrackSplineInspector : Editor
         selectedPowerPrevious = serializedObject.FindProperty("selectedPowerPrevious");
         selectedSpeed = serializedObject.FindProperty("selectedSpeed");
         gravity = serializedObject.FindProperty("gravity");
-        continuousLoop = serializedObject.FindProperty("continuousLoop");
+        isContinuousLoop = serializedObject.FindProperty("isContinuousLoop");
         loops = serializedObject.FindProperty("loops");
     }
 
+    /// <summary>
+    /// Spline controls in the scene view.
+    /// </summary>
     private void OnSceneGUI()
     {
         spline = target as TrackSpline;
+        
+        if (!spline) return;
+        
         splineTransform = spline.transform;
 
         try
@@ -50,9 +59,9 @@ public class TrackSplineInspector : Editor
     }
 
     /// <summary>
-    /// Displays move / rotation controls.
+    /// Displays move/rotation controls.
     /// </summary>
-    /// <param name="curveNum"></param>
+    /// <param name="curveNum">The index of the curve to display controls for.</param>
     private void DisplayControls(int curveNum)
     {
         int startIndex = curveNum * 3;
@@ -64,7 +73,7 @@ public class TrackSplineInspector : Editor
             splineTransform.TransformPoint(spline.Points[startIndex + 3].LocalPosition)
         };
 
-        Handles.color = Color.blue; // BIG IF STATEMENT
+        Handles.color = Color.blue;
         Handles.DrawLine(transformedPositions[0], transformedPositions[1]);
         Handles.DrawLine(transformedPositions[2], transformedPositions[3]);
 
@@ -72,7 +81,7 @@ public class TrackSplineInspector : Editor
         {
             float size = HandleUtility.GetHandleSize(transformedPositions[i]);
 
-            if ((!spline.ContinuousLoop || !(i == 3 && curveNum == ((spline.Points.Length / 3) - 1))) &&
+            if ((!spline.isContinuousLoop || !(i == 3 && curveNum == ((spline.Points.Length / 3) - 1))) &&
                 Handles.Button(transformedPositions[i], Quaternion.identity, size * 0.04f, size * 0.07f, Handles.DotHandleCap)) // creates a button that returns true on left click
             {
                 spline.selectedIndex = startIndex + i;
@@ -121,9 +130,9 @@ public class TrackSplineInspector : Editor
                             EditorUtility.SetDirty(spline); // prompts user to save if point is moved and exiting/reloading the scene
 
                             spline.Points[spline.selectedIndex].Rotation = actualRotation;
-                            if (spline.selectedIndex == 0 && spline.ContinuousLoop)
+                            if (spline.selectedIndex == 0 && spline.isContinuousLoop)
                             {
-                                spline.Points[spline.Points.Length - 1].Rotation = actualRotation;
+                                spline.Points[^1].Rotation = actualRotation;
                             }
                             spline.UpdateSelected(spline.selectedIndex);
                         }
@@ -141,139 +150,146 @@ public class TrackSplineInspector : Editor
         DrawDefaultInspector();
         spline = target as TrackSpline;
 
-        // Valid point
-        if (spline.selectedIndex != -1)
+        if (spline.Points == null)
         {
-            GUISaveLoad();
+            spline.Reset();
+        }
 
-            GUILayout.Space(20);
+        if (spline.selectedIndex < 0 || spline.selectedIndex >= spline.Points.Length)
+        {
+            spline.selectedIndex = 0;
+            spline.UpdateSelected(spline.selectedIndex);
+        }
+        
+        GUISaveLoad();
 
-            GUILayout.BeginVertical("box");
+        GUILayout.Space(20);
 
-            GUILayout.Label("Selected Point: " + spline.selectedIndex);
+        GUILayout.BeginVertical("box");
 
-            EditorGUILayout.PropertyField(selectedPosition, new GUIContent("Position"), GUILayout.Height(20));
+        GUILayout.Label("Selected Point: " + spline.selectedIndex);
 
-            if (spline.selectedIndex % 3 == 0)
+        EditorGUILayout.PropertyField(selectedPosition, new GUIContent("Position"), GUILayout.Height(20));
+
+        if (spline.selectedIndex % 3 == 0)
+        {
+            // Rail rotation
+            EditorGUILayout.PropertyField(selectedRailRotation, new GUIContent("Rail Rotation"), GUILayout.Height(20));
+            if (serializedObject.hasModifiedProperties)
             {
-                // Rail rotation
-                EditorGUILayout.PropertyField(selectedRailRotation, new GUIContent("Rail Rotation"), GUILayout.Height(20));
+                GetPointPosDist(spline.selectedIndex, out Vector3 lastPosition, out float prevDistance, out float nextDistance);
+                serializedObject.ApplyModifiedProperties();
+                spline.EditTransform(spline.selectedIndex); // Edits the position and the rotation
+                SetConnectedPoints(spline.selectedIndex, lastPosition, prevDistance, nextDistance);
+            }
+
+            // Power the next rail
+            if (spline.selectedIndex != spline.Points.Length - 1)
+            {
+                EditorGUILayout.PropertyField(selectedPowerNext, new GUIContent("Power Next"), GUILayout.Height(20));
                 if (serializedObject.hasModifiedProperties)
                 {
-                    GetPointPosDist(spline.selectedIndex, out Vector3 lastPosition, out float prevDistance, out float nextDistance);
                     serializedObject.ApplyModifiedProperties();
-                    spline.EditTransform(spline.selectedIndex); // Edits the position and the rotation
-                    SetConnectedPoints(spline.selectedIndex, lastPosition, prevDistance, nextDistance);
-                }
-
-                // Power the next rail
-                if (spline.selectedIndex != spline.Points.Length - 1)
-                {
-                    EditorGUILayout.PropertyField(selectedPowerNext, new GUIContent("Power Next"), GUILayout.Height(20));
-                    if (serializedObject.hasModifiedProperties)
-                    {
-                        serializedObject.ApplyModifiedProperties();
-                        spline.EditPowerEndPoint(spline.selectedIndex);
-                    }
-                }
-
-                // Power the previous rail
-                if (spline.selectedIndex != 0 || spline.ContinuousLoop)
-                {
-                    EditorGUILayout.PropertyField(selectedPowerPrevious, new GUIContent("Power Previous"), GUILayout.Height(20));
-                    if (serializedObject.hasModifiedProperties)
-                    {
-                        serializedObject.ApplyModifiedProperties();
-                        spline.EditPowerEndPoint(spline.selectedIndex);
-                    }
-                }
-
-                // Set speed of powered rail
-                if ((spline.Points[spline.selectedIndex].PowerPrevious && !spline.Points[spline.selectedIndex].PowerNext) || 
-                    (spline.selectedIndex == 0 && spline.ContinuousLoop && spline.Points[spline.Points.Length - 1].PowerPrevious))
-                {
-                    EditorGUILayout.PropertyField(selectedSpeed, new GUIContent("Speed"), GUILayout.Height(20));
-                    if (serializedObject.hasModifiedProperties)
-                    {
-                        serializedObject.ApplyModifiedProperties();
-                        spline.EditSpeed(spline.selectedIndex);
-                    }
+                    spline.EditPowerEndPoint(spline.selectedIndex);
                 }
             }
-            else
-            {
-                if (serializedObject.hasModifiedProperties)
-                {
-                    GetPointPosDist(spline.selectedIndex, out Vector3 lastPosition, out float prevDistance, out float nextDistance);
-                    serializedObject.ApplyModifiedProperties();
-                    spline.EditTransform(spline.selectedIndex); // Edits the position and the rotation
-                    SetConnectedPoints(spline.selectedIndex, lastPosition, prevDistance, nextDistance);
-                }
 
-                EditorGUILayout.PropertyField(selectedPowerNext, new GUIContent("Power Spline"), GUILayout.Height(20));
+            // Power the previous rail
+            if (spline.selectedIndex != 0 || spline.isContinuousLoop)
+            {
+                EditorGUILayout.PropertyField(selectedPowerPrevious, new GUIContent("Power Previous"), GUILayout.Height(20));
                 if (serializedObject.hasModifiedProperties)
                 {
                     serializedObject.ApplyModifiedProperties();
-                    spline.EditPowerControlPoint(spline.selectedIndex);
+                    spline.EditPowerEndPoint(spline.selectedIndex);
                 }
             }
-            GUILayout.EndVertical();
+            
+            // Set speed of powered rail
+            if ((spline.Points[spline.selectedIndex].PowerPrevious && !spline.Points[spline.selectedIndex].PowerNext) || 
+                (spline.selectedIndex == 0 && spline.isContinuousLoop && spline.Points[^1].PowerPrevious))
+            {
+                EditorGUILayout.PropertyField(selectedSpeed, new GUIContent("Speed"), GUILayout.Height(20));
+                if (serializedObject.hasModifiedProperties)
+                {
+                    serializedObject.ApplyModifiedProperties();
+                    spline.EditSpeed(spline.selectedIndex);
+                }
+            }
+        }
+        else
+        {
+            if (serializedObject.hasModifiedProperties)
+            {
+                GetPointPosDist(spline.selectedIndex, out Vector3 lastPosition, out float prevDistance, out float nextDistance);
+                serializedObject.ApplyModifiedProperties();
+                spline.EditTransform(spline.selectedIndex); // Edits the position and the rotation
+                SetConnectedPoints(spline.selectedIndex, lastPosition, prevDistance, nextDistance);
+            }
 
-            GUIAddRemove();
-
-            GUILayout.Space(8);
-
-            EditorGUILayout.PropertyField(gravity, new GUIContent("Gravity"), GUILayout.Height(15));
+            EditorGUILayout.PropertyField(selectedPowerNext, new GUIContent("Power Curve"), GUILayout.Height(20));
             if (serializedObject.hasModifiedProperties)
             {
                 serializedObject.ApplyModifiedProperties();
+                spline.EditPowerControlPoint(spline.selectedIndex);
+            }
+        }
+        GUILayout.EndVertical();
+
+        GUIAddRemove();
+
+        GUILayout.Space(8);
+
+        EditorGUILayout.PropertyField(gravity, new GUIContent("Gravity"), GUILayout.Height(15));
+        if (serializedObject.hasModifiedProperties)
+        {
+            serializedObject.ApplyModifiedProperties();
+        }
+
+        EditorGUILayout.PropertyField(isContinuousLoop, new GUIContent("Continuous Loop"), GUILayout.Height(15));
+        if (serializedObject.hasModifiedProperties)
+        {
+            serializedObject.ApplyModifiedProperties();
+
+            GetPointPosDist(1, out Vector3 lastPosition, out float prevDistance, out float nextDistance);
+            SetConnectedPoints(1, lastPosition, prevDistance, nextDistance);
+
+            spline.Points[^1].Position = spline.Points[0].Position;
+
+            if (spline.isContinuousLoop) // Switch to continuous from non
+            {
+                spline.Points[0].PowerPrevious = spline.Points[^1].PowerPrevious;
+                spline.Points[^1].PowerNext = spline.Points[0].PowerNext;
+                spline.Points[0].Speed = spline.Points[^1].Speed;
+
+                if (spline.loops <= 0)
+                {
+                    spline.loops = 1;
+                }
+            }
+            else // Switch from continuous to non
+            {
+                spline.Points[0].PowerPrevious = false;
+                spline.Points[^1].PowerNext = false;
             }
 
-            EditorGUILayout.PropertyField(continuousLoop, new GUIContent("Continuous Loop"), GUILayout.Height(15));
+            if (spline.selectedIndex == spline.Points.Length - 1)
+            {
+                spline.selectedIndex = 0;
+            }
+            spline.UpdateSelected(spline.selectedIndex);
+        }
+
+        // Setting loop amount
+        if (spline.isContinuousLoop)
+        {
+            EditorGUILayout.PropertyField(loops, new GUIContent("Loops"), GUILayout.Height(15)); // No changes must be made for this
             if (serializedObject.hasModifiedProperties)
             {
                 serializedObject.ApplyModifiedProperties();
-
-                GetPointPosDist(1, out Vector3 lastPosition, out float prevDistance, out float nextDistance);
-                SetConnectedPoints(1, lastPosition, prevDistance, nextDistance);
-
-                spline.Points[spline.Points.Length - 1].Position = spline.Points[0].Position;
-
-                if (spline.ContinuousLoop) // Switch to continuous from non
+                if (spline.loops <= 0)
                 {
-                    spline.Points[0].PowerPrevious = spline.Points[spline.Points.Length - 1].PowerPrevious;
-                    spline.Points[spline.Points.Length - 1].PowerNext = spline.Points[0].PowerNext;
-                    spline.Points[0].Speed = spline.Points[spline.Points.Length - 1].Speed;
-
-                    if (spline.Loops <= 0)
-                    {
-                        spline.Loops = 1;
-                    }
-                }
-                else // Switch from continuous to non
-                {
-                    spline.Points[0].PowerPrevious = false;
-                    spline.Points[spline.Points.Length - 1].PowerNext = false;
-                }
-
-                if (spline.selectedIndex == spline.Points.Length - 1)
-                {
-                    spline.selectedIndex = 0;
-                }
-                spline.UpdateSelected(spline.selectedIndex);
-            }
-
-            // Setting loop amount
-            if (spline.ContinuousLoop)
-            {
-                EditorGUILayout.PropertyField(loops, new GUIContent("Loops"), GUILayout.Height(15)); // No changes must be made for this
-                if (serializedObject.hasModifiedProperties)
-                {
-                    serializedObject.ApplyModifiedProperties();
-                    if (spline.Loops <= 0)
-                    {
-                        spline.Loops = 1;
-                    }
+                    spline.loops = 1;
                 }
             }
         }
@@ -384,13 +400,13 @@ public class TrackSplineInspector : Editor
         {
             Undo.RecordObject(spline, "Add Curve to End");
             spline.AddCurve();
-            if (spline.Points[spline.selectedIndex].PowerNext || spline.ContinuousLoop)
+            if (spline.Points[spline.selectedIndex].PowerNext || spline.isContinuousLoop)
             {
-                if (spline.ContinuousLoop)
+                if (spline.isContinuousLoop)
                 {
                     GetPointPosDist(1, out Vector3 lastPosition, out float prevDistance, out float nextDistance);
                     SetConnectedPoints(1, lastPosition, prevDistance, nextDistance);
-                    spline.Points[spline.Points.Length - 1].Position = spline.Points[0].Position;
+                    spline.Points[^1].Position = spline.Points[0].Position;
                 }
 
                 spline.UpdateSelected(spline.selectedIndex);
@@ -412,11 +428,11 @@ public class TrackSplineInspector : Editor
                 spline.RemoveCurve();
             }
 
-            if (spline.ContinuousLoop)
+            if (spline.isContinuousLoop)
             {
                 GetPointPosDist(1, out Vector3 lastPosition, out float prevDistance, out float nextDistance);
                 SetConnectedPoints(1, lastPosition, prevDistance, nextDistance);
-                spline.Points[spline.Points.Length - 1].Position = spline.Points[0].Position;
+                spline.Points[^1].Position = spline.Points[0].Position;
                 if (spline.selectedIndex >= spline.Points.Length - 1)
                 {
                     spline.selectedIndex = 0;
@@ -431,10 +447,10 @@ public class TrackSplineInspector : Editor
     /// <summary>
     /// Method to get necessary value before a spline point is moved. To be used before SetConnectedPoints.
     /// </summary>
-    /// <param name="index"></param>
-    /// <param name="lastPosition"></param>
-    /// <param name="prevDistance"></param>
-    /// <param name="nextDistance"></param>
+    /// <param name="index">The index of the point to get the position and distance for.</param>
+    /// <param name="lastPosition">The position of the last point.</param>
+    /// <param name="prevDistance">The distance between the previous point and the current point.</param>
+    /// <param name="nextDistance">The distance between the next point and the current point.</param>
     private void GetPointPosDist(int index, out Vector3 lastPosition, out float prevDistance, out float nextDistance)
     {
         lastPosition = Vector3.zero;
@@ -450,10 +466,10 @@ public class TrackSplineInspector : Editor
                 {
                     prevDistance = Vector3.Distance(spline.Points[index - 2].LocalPosition, spline.Points[index - 1].LocalPosition);
                 }
-                else if (spline.ContinuousLoop)
+                else if (spline.isContinuousLoop)
                 {
-                    prevDistance = Vector3.Distance(spline.Points[spline.Points.Length - 2].LocalPosition,
-                        spline.Points[spline.Points.Length - 1].LocalPosition);
+                    prevDistance = Vector3.Distance(spline.Points[^2].LocalPosition,
+                        spline.Points[^1].LocalPosition);
                 }
                 break;
             case 2:
@@ -461,7 +477,7 @@ public class TrackSplineInspector : Editor
                 {
                     nextDistance = Vector3.Distance(spline.Points[index + 2].LocalPosition, spline.Points[index + 1].LocalPosition);
                 }
-                else if (spline.ContinuousLoop)
+                else if (spline.isContinuousLoop)
                 {
                     nextDistance = Vector3.Distance(spline.Points[1].LocalPosition, spline.Points[0].LocalPosition);
                 }
@@ -472,9 +488,10 @@ public class TrackSplineInspector : Editor
     /// <summary>
     /// Method that moves points adjacent to the moving spline point. To be used after GetPointPosDist.
     /// </summary>
-    /// <param name="lastPosition"></param>
-    /// <param name="prevDistance"></param>
-    /// <param name="nextDistance"></param>
+    /// <param name="index">The index of the point to move.</param>
+    /// <param name="lastPosition">The position of the last point.</param>
+    /// <param name="prevDistance">The distance between the previous point and the current point.</param>
+    /// <param name="nextDistance">The distance between the next point and the current point.</param>
     private void SetConnectedPoints(int index, Vector3 lastPosition, float prevDistance, float nextDistance)
     {
         SplinePoint endPoint;
@@ -495,12 +512,12 @@ public class TrackSplineInspector : Editor
                     spline.Points[index - 1].LocalPosition = new Vector4(prevPosition.x + changePosition.x, prevPosition.y + changePosition.y,
                         prevPosition.z + changePosition.z, prevPosition.w);
                 }
-                else if (spline.ContinuousLoop)
+                else if (spline.isContinuousLoop)
                 {
-                    Vector4 prevPosition = spline.Points[spline.Points.Length - 2].LocalPosition;
-                    spline.Points[spline.Points.Length - 2].LocalPosition = new Vector4(prevPosition.x + changePosition.x,
+                    Vector4 prevPosition = spline.Points[^2].LocalPosition;
+                    spline.Points[^2].LocalPosition = new Vector4(prevPosition.x + changePosition.x,
                         prevPosition.y + changePosition.y, prevPosition.z + changePosition.z, prevPosition.w);
-                    spline.Points[spline.Points.Length - 1].LocalPosition = currPosition;
+                    spline.Points[^1].LocalPosition = currPosition;
                 }
                 if (index < spline.Points.Length - 1)
                 {
@@ -522,10 +539,10 @@ public class TrackSplineInspector : Editor
                     spline.Points[index - 2].LocalPosition = new Vector3(endPointPosition.x - direction.x, endPointPosition.y - direction.y,
                         endPointPosition.z - direction.z);
                 }
-                else if (spline.ContinuousLoop)
+                else if (spline.isContinuousLoop)
                 {
                     direction *= prevDistance;
-                    spline.Points[spline.Points.Length - 2].LocalPosition = new Vector3(endPointPosition.x - direction.x,
+                    spline.Points[^2].LocalPosition = new Vector3(endPointPosition.x - direction.x,
                         endPointPosition.y - direction.y, endPointPosition.z - direction.z);
 
                     // rotation
@@ -534,7 +551,7 @@ public class TrackSplineInspector : Editor
                     localEuler = endPoint.LocalRotation.eulerAngles;
                     localEuler.z = railRotation;
                     endPoint.LocalRotation = Quaternion.Euler(localEuler);
-                    spline.Points[spline.Points.Length - 1].LocalRotation = endPoint.LocalRotation;
+                    spline.Points[^1].LocalRotation = endPoint.LocalRotation;
                     break;
                 }
 
@@ -557,7 +574,7 @@ public class TrackSplineInspector : Editor
                     spline.Points[index + 2].LocalPosition = new Vector3(endPointPosition.x - direction.x, endPointPosition.y - direction.y,
                         endPointPosition.z - direction.z);
                 }
-                else if (spline.ContinuousLoop)
+                else if (spline.isContinuousLoop)
                 {
                     direction *= nextDistance;
                     spline.Points[1].LocalPosition = new Vector3(endPointPosition.x - direction.x, endPointPosition.y - direction.y,
